@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Search Wikipedia Topics</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f4f4f9;
+            margin: 0;
+            padding: 20px;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        form {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+        input[type="text"] {
+            width: 300px;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        input[type="text"]:focus {
+            border-color: #007bff;
+            outline: none;
+        }
+        button {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 5px;
+            background-color: #007bff;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+            margin-left: 10px;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background-color: #fff;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+        .downloaded-files {
+            margin-top: 20px;
+            border-top: 2px solid #007bff;
+            padding-top: 15px;
+        }
+        ul {
+            list-style-type: none;
+            padding: 0;
+        }
+        ul li {
+            padding: 5px 0;
+        }
+        ul li a {
+            text-decoration: none;
+            color: #007bff;
+            transition: color 0.3s;
+        }
+        ul li a:hover {
+            color: #0056b3;
+        }
+        .no-results {
+            color: #666;
+            text-align: center;
+        }
+        .full-content {
+            margin-top: 20px;
+            white-space: pre-wrap;  /* Preserves formatting */
+            line-height: 1.5;       /* Increases line spacing for readability */
+            max-height: 400px;      /* Set a max height */
+            overflow-y: auto;       /* Add vertical scroll */
+            border: 1px solid #ddd; /* Border around full content */
+            padding: 10px;          /* Padding inside the box */
+            background-color: #f9f9f9; /* Light background for contrast */
+        }
+    </style>
+</head>
+<body>
+    <h1>Search Wikipedia Topics</h1>
+    <form method="POST">
+        <input type="text" name="query" placeholder="Search for a topic..." required>
+        <button type="submit">Search</button>
+    </form>
+
+    <div class="result">
+        {% if results %}
+            <h2>{{ results.title }}</h2>
+            <p>{{ results.summary }}</p>
+            <p><a href="https://en.wikipedia.org/wiki/{{ results.title }}" target="_blank">Read more on Wikipedia</a></p>
+            <p><strong>Saved to:</strong> <a href="{{ results.file_name }}" target="_blank">{{ results.file_name }}</a></p>
+            <div class="full-content">
+                <h3>Full Content:</h3>
+                <p>{{ results.full_content }}</p>
+            </div>
+        {% else %}
+            <p class="no-results">No results found.</p>
+        {% endif %}
+    </div>
+
+    <div class="downloaded-files">
+        <h3>Downloaded Files</h3>
+        {% if downloaded_files %}
+            <ul>
+                {% for file in downloaded_files %}
+                    <li><a href="{{ url_for('static', filename='downloaded_data/' + file) }}" target="_blank">{{ file }}</a></li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p class="no-results">No files downloaded yet.</p>
+        {% endif %}
+    </div>
+</body>
+</html>
