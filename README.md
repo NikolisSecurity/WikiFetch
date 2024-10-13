@@ -53,7 +53,6 @@
    Visit: http://127.0.0.1:5000/
    
 ---
-
 ### 📂 **Project Structure**
 
    ```bash
@@ -63,3 +62,5 @@
   │   └── index.html         # Front-end HTML
   ├── downloaded_data/       # Folder for saved articles
   └── requirements.txt       # Required dependencies
+  ```
+With WikiFetch, you can easily create your own knowledge base powered by Wikipedia, all in one place! 💡
