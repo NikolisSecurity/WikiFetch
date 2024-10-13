@@ -41,7 +41,7 @@
 
 1. **Clone the Repository**  
    ```bash
-   git clone https://github.com/yourusername/WikiFetch.git
+   git clone https://github.com/NikolisSecurity/WikiFetch.git
 2. **Install Dependencies**
    ```bash
    pip install -r requirements.txt
