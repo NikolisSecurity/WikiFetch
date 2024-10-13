@@ -33,7 +33,7 @@
 
 - **Backend**: [Flask](https://flask.palletsprojects.com/) 
 - **API**: [Wikipedia API](https://pypi.org/project/wikipedia/)
-- **Languages**: Python, HTML, CSS, JavaScript
+- **Languages**: Python, HTML, CSS
 
 ---
 
