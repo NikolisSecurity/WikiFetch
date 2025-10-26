@@ -361,4 +361,7 @@ def migrate_files():
         return jsonify({"error": "Internal server error", "status": 500}), 500
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    import os
+    port = int(os.getenv('PORT', 5000))
+    debug = os.getenv('FLASK_ENV', 'development') == 'development'
+    app.run(host='0.0.0.0', port=port, debug=debug)
