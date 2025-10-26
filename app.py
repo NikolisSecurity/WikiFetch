@@ -1,8 +1,9 @@
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, jsonify
 import wikipedia
 import os
 import warnings
 import logging
+import database
 
 # Suppress warnings from the Wikipedia API
 warnings.filterwarnings("ignore", category=UserWarning, module='wikipedia')
