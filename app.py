@@ -204,5 +204,161 @@ def api_get_stats():
         logging.error(f"API error: {e}")
         return jsonify({"error": "Internal server error", "status": 500}), 500
 
+# Migration Routes
+@app.route('/migration-status', methods=['GET'])
+def get_migration_status():
+    """Get status of txt files vs database articles."""
+    try:
+        # Get all txt files
+        txt_files = []
+        if os.path.exists(SAVE_DIR):
+            txt_files = [f for f in os.listdir(SAVE_DIR) if f.endswith('.txt')]
+
+        # Get all article titles from database
+        conn = database.get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute('SELECT title FROM articles')
+        db_titles = {row['title'] for row in cursor.fetchall()}
+        conn.close()
+
+        # Categorize files
+        unmigrated_files = []
+        migrated_files = []
+
+        for txt_file in txt_files:
+            # Parse title from filename (reverse the underscore replacement)
+            title = txt_file.replace('.txt', '').replace('_', ' ')
+
+            if title in db_titles:
+                migrated_files.append(txt_file)
+            else:
+                unmigrated_files.append(txt_file)
+
+        return jsonify({
+            "unmigrated": unmigrated_files,
+            "migrated": migrated_files,
+            "total_txt_files": len(txt_files),
+            "total_db_articles": len(db_titles)
+        }), 200
+
+    except Exception as e:
+        logging.error(f"Migration status error: {e}")
+        return jsonify({"error": "Internal server error", "status": 500}), 500
+
+@app.route('/migrate', methods=['POST'])
+def migrate_files():
+    """Migrate selected txt files to database."""
+    try:
+        data = request.get_json()
+
+        if not data or 'files' not in data:
+            return jsonify({"error": "Files parameter required", "status": 400}), 400
+
+        files_to_migrate = data['files']
+        delete_after = data.get('delete_after', False)
+
+        if not isinstance(files_to_migrate, list):
+            return jsonify({"error": "Files must be an array", "status": 400}), 400
+
+        results = []
+
+        for file_name in files_to_migrate:
+            result = {"file": file_name, "status": "error", "message": "Unknown error"}
+
+            try:
+                file_path = os.path.join(SAVE_DIR, file_name)
+
+                # Check if file exists
+                if not os.path.exists(file_path):
+                    result["message"] = "File not found"
+                    results.append(result)
+                    continue
+
+                # Read file content
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    content = f.read()
+
+                # Parse content: First line should be "Title: X"
+                if not content.startswith("Title: "):
+                    result["message"] = "File malformed (no Title: line)"
+                    results.append(result)
+                    continue
+
+                # Split on first double newline
+                parts = content.split('\n\n', 1)
+                if len(parts) < 2:
+                    result["message"] = "File malformed (no content after title)"
+                    results.append(result)
+                    continue
+
+                # Extract title
+                title_line = parts[0]
+                title = title_line.replace("Title: ", "").strip()
+
+                # Extract content
+                article_content = parts[1].strip()
+
+                if not title:
+                    result["message"] = "Title is empty"
+                    results.append(result)
+                    continue
+
+                if len(article_content) < 10:
+                    result["message"] = "Content too short"
+                    results.append(result)
+                    continue
+
+                # Generate Wikipedia URL
+                url = f"https://en.wikipedia.org/wiki/{title.replace(' ', '_')}"
+
+                # Calculate metrics
+                word_count = len(article_content.split())
+                char_count = len(article_content)
+
+                # Insert into database
+                try:
+                    article_id = database.insert_article(
+                        title=title,
+                        content=article_content,
+                        url=url,
+                        word_count=word_count,
+                        char_count=char_count,
+                        tags=[]
+                    )
+
+                    result["status"] = "success"
+                    result["message"] = f"Imported successfully (ID: {article_id})"
+                    result["article_id"] = article_id
+
+                    # Delete file if requested
+                    if delete_after:
+                        os.remove(file_path)
+                        result["message"] += " and file deleted"
+
+                except ValueError as e:
+                    if "already saved" in str(e).lower():
+                        result["message"] = "Article already exists in database"
+                    else:
+                        result["message"] = str(e)
+
+            except PermissionError:
+                result["message"] = "File read permission error"
+            except Exception as e:
+                result["message"] = f"Error: {str(e)}"
+
+            results.append(result)
+
+        # Return results
+        success_count = sum(1 for r in results if r['status'] == 'success')
+        return jsonify({
+            "results": results,
+            "success_count": success_count,
+            "total_count": len(results)
+        }), 200
+
+    except Exception as e:
+        logging.error(f"Migration error: {e}")
+        return jsonify({"error": "Internal server error", "status": 500}), 500
+
 if __name__ == '__main__':
     app.run(debug=True)
