@@ -61,7 +61,8 @@ def search_wikipedia(query):
                 "summary": page.summary,
                 "full_content": page.content,
                 "url": url,
-                "word_count": word_count
+                "word_count": word_count,
+                "source": "wikipedia"
             }
         except ValueError as e:
             # Article already exists or validation error
@@ -70,17 +71,48 @@ def search_wikipedia(query):
                 "summary": page.summary,
                 "full_content": page.content,
                 "url": url,
-                "error": str(e)
+                "error": str(e),
+                "source": "wikipedia"
             }
 
     except wikipedia.exceptions.DisambiguationError as e:
         return {
             "title": "Disambiguation",
             "summary": f"This term may refer to: {', '.join(e.options)}",
-            "full_content": None
+            "full_content": None,
+            "source": "wikipedia"
         }
     except wikipedia.exceptions.PageError:
-        return None
+        # Check if article exists locally
+        local_results = database.search_articles(query)
+        if local_results:
+            return {
+                "title": "Article Not Found on Wikipedia",
+                "summary": f"Could not find '{query}' on Wikipedia, but found {len(local_results)} similar article(s) in your local database.",
+                "local_results": local_results,
+                "source": "local_search"
+            }
+        return {
+            "title": "Article Not Found",
+            "summary": f"Could not find '{query}' on Wikipedia or in your local database.",
+            "source": "not_found"
+        }
+    except Exception as e:
+        # Network error or Wikipedia API unavailable - search locally
+        logging.error(f"Wikipedia fetch error: {e}")
+        local_results = database.search_articles(query)
+        if local_results:
+            return {
+                "title": "Offline Mode",
+                "summary": f"Cannot connect to Wikipedia (offline mode). Found {len(local_results)} matching article(s) in your local database.",
+                "local_results": local_results,
+                "source": "offline"
+            }
+        return {
+            "title": "Offline Mode",
+            "summary": f"Cannot connect to Wikipedia. No articles found in local database for '{query}'. Try searching with different terms or connect to the internet to fetch new articles.",
+            "source": "offline"
+        }
 
 def list_downloaded_files():
     """Lists all articles from the database."""
