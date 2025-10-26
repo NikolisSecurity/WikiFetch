@@ -36,17 +36,43 @@ def index():
 def search_wikipedia(query):
     try:
         page = wikipedia.page(query)
-        file_name = f"{SAVE_DIR}/{page.title.replace(' ', '_')}.txt"
-        # Save the page content to a text file
-        with open(file_name, 'w', encoding='utf-8') as f:
-            f.write(f"Title: {page.title}\n\n")
-            f.write(page.content)
-        return {
-            "title": page.title,
-            "summary": page.summary,
-            "full_content": page.content,
-            "file_name": file_name
-        }
+
+        # Generate Wikipedia URL
+        url = page.url
+
+        # Calculate word and character counts
+        word_count = len(page.content.split())
+        char_count = len(page.content)
+
+        # Save to database
+        try:
+            article_id = database.insert_article(
+                title=page.title,
+                content=page.content,
+                url=url,
+                word_count=word_count,
+                char_count=char_count,
+                tags=[]
+            )
+
+            return {
+                "id": article_id,
+                "title": page.title,
+                "summary": page.summary,
+                "full_content": page.content,
+                "url": url,
+                "word_count": word_count
+            }
+        except ValueError as e:
+            # Article already exists or validation error
+            return {
+                "title": page.title,
+                "summary": page.summary,
+                "full_content": page.content,
+                "url": url,
+                "error": str(e)
+            }
+
     except wikipedia.exceptions.DisambiguationError as e:
         return {
             "title": "Disambiguation",
