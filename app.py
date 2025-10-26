@@ -83,11 +83,13 @@ def search_wikipedia(query):
         return None
 
 def list_downloaded_files():
-    """Lists all files in the downloaded_data directory."""
+    """Lists all articles from the database."""
     try:
-        return os.listdir(SAVE_DIR)
-    except FileNotFoundError:
-        return []  # Return an empty list if the directory does not exist
+        articles = database.get_all_articles(limit=100, offset=0)
+        return articles
+    except Exception as e:
+        logging.error(f"Error fetching articles: {e}")
+        return []  # Return an empty list on error
 
 @app.errorhandler(500)
 def internal_error(error):
