@@ -392,6 +392,134 @@ def migrate_files():
         logging.error(f"Migration error: {e}")
         return jsonify({"error": "Internal server error", "status": 500}), 500
 
+# Favorites Routes
+@app.route('/api/favorites', methods=['GET'])
+def api_get_favorites():
+    """Get all favorited articles."""
+    try:
+        favorites = database.get_favorites()
+        return jsonify({"favorites": favorites, "count": len(favorites)}), 200
+    except Exception as e:
+        logging.error(f"API error: {e}")
+        return jsonify({"error": "Internal server error", "status": 500}), 500
+
+@app.route('/api/favorites/<int:article_id>', methods=['POST'])
+def api_add_favorite(article_id):
+    """Add article to favorites."""
+    try:
+        success = database.add_favorite(article_id)
+        if success:
+            return jsonify({"message": "Added to favorites"}), 200
+        return jsonify({"error": "Failed to add favorite", "status": 500}), 500
+    except Exception as e:
+        logging.error(f"API error: {e}")
+        return jsonify({"error": "Internal server error", "status": 500}), 500
+
+@app.route('/api/favorites/<int:article_id>', methods=['DELETE'])
+def api_remove_favorite(article_id):
+    """Remove article from favorites."""
+    try:
+        success = database.remove_favorite(article_id)
+        if success:
+            return '', 204
+        return jsonify({"error": "Article not in favorites", "status": 404}), 404
+    except Exception as e:
+        logging.error(f"API error: {e}")
+        return jsonify({"error": "Internal server error", "status": 500}), 500
+
+# Tags Routes
+@app.route('/api/tags', methods=['GET'])
+def api_get_tags():
+    """Get all tags with article counts."""
+    try:
+        tags = database.get_all_tags()
+        return jsonify({"tags": tags, "count": len(tags)}), 200
+    except Exception as e:
+        logging.error(f"API error: {e}")
+        return jsonify({"error": "Internal server error", "status": 500}), 500
+
+@app.route('/api/tags/<tag_name>/articles', methods=['GET'])
+def api_get_articles_by_tag(tag_name):
+    """Get all articles with a specific tag."""
+    try:
+        articles = database.get_articles_by_tag(tag_name)
+        return jsonify({"articles": articles, "count": len(articles)}), 200
+    except Exception as e:
+        logging.error(f"API error: {e}")
+        return jsonify({"error": "Internal server error", "status": 500}), 500
+
+@app.route('/api/articles/<int:article_id>/tags', methods=['POST'])
+def api_add_tag_to_article(article_id):
+    """Add tag to an article."""
+    try:
+        data = request.get_json()
+        if not data or 'tag' not in data:
+            return jsonify({"error": "Tag parameter required", "status": 400}), 400
+
+        tag_name = data['tag'].strip()
+        if not tag_name:
+            return jsonify({"error": "Tag cannot be empty", "status": 400}), 400
+
+        database.add_tag(article_id, tag_name)
+        return jsonify({"message": "Tag added successfully"}), 200
+    except Exception as e:
+        logging.error(f"API error: {e}")
+        return jsonify({"error": "Internal server error", "status": 500}), 500
+
+# Bulk Operations
+@app.route('/api/bulk/delete', methods=['POST'])
+def api_bulk_delete():
+    """Delete multiple articles."""
+    try:
+        data = request.get_json()
+        if not data or 'ids' not in data:
+            return jsonify({"error": "IDs array required", "status": 400}), 400
+
+        ids = data['ids']
+        if not isinstance(ids, list) or len(ids) == 0:
+            return jsonify({"error": "IDs must be a non-empty array", "status": 400}), 400
+
+        deleted_count = database.delete_multiple_articles(ids)
+        return jsonify({"deleted": deleted_count, "message": f"Deleted {deleted_count} article(s)"}), 200
+    except Exception as e:
+        logging.error(f"API error: {e}")
+        return jsonify({"error": "Internal server error", "status": 500}), 500
+
+# Export Routes
+@app.route('/api/export/<int:article_id>', methods=['GET'])
+def api_export_article(article_id):
+    """Export article as text, markdown, or HTML."""
+    try:
+        format_type = request.args.get('format', 'txt')
+        article = database.get_article_by_id(article_id)
+
+        if not article:
+            return jsonify({"error": "Article not found", "status": 404}), 404
+
+        from flask import Response
+
+        if format_type == 'txt':
+            content = f"Title: {article['title']}\n\n{article['content']}"
+            return Response(content, mimetype='text/plain',
+                          headers={'Content-Disposition': f'attachment; filename="{article["title"]}.txt"'})
+
+        elif format_type == 'md':
+            content = f"# {article['title']}\n\n{article['content']}"
+            return Response(content, mimetype='text/markdown',
+                          headers={'Content-Disposition': f'attachment; filename="{article["title"]}.md"'})
+
+        elif format_type == 'html':
+            content = f"<!DOCTYPE html><html><head><meta charset='UTF-8'><title>{article['title']}</title></head><body><h1>{article['title']}</h1><pre>{article['content']}</pre></body></html>"
+            return Response(content, mimetype='text/html',
+                          headers={'Content-Disposition': f'attachment; filename="{article["title"]}.html"'})
+
+        else:
+            return jsonify({"error": "Invalid format. Use txt, md, or html", "status": 400}), 400
+
+    except Exception as e:
+        logging.error(f"Export error: {e}")
+        return jsonify({"error": "Internal server error", "status": 500}), 500
+
 if __name__ == '__main__':
     import os
     port = int(os.getenv('PORT', 5000))
