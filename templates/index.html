@@ -383,14 +383,39 @@
         <!-- Content Area -->
         <div class="content" id="contentArea">
             {% if results %}
-                {% if results.error %}
+                {% if results.source == 'offline' or results.source == 'local_search' %}
+                    <div class="article-header">
+                        <h2 class="article-title">{{ results.title }}</h2>
+                        <p style="color: #f39c12; font-size: 14px; margin-top: 10px;">
+                            {% if results.source == 'offline' %}
+                            ⚠️ Offline Mode - Cannot connect to Wikipedia
+                            {% else %}
+                            ℹ️ Not found on Wikipedia - Showing local results
+                            {% endif %}
+                        </p>
+                    </div>
+                    <div class="article-summary">
+                        <h3>{{ results.summary }}</h3>
+                    </div>
+
+                    {% if results.local_results %}
+                    <div style="margin-top: 20px;">
+                        <h3 style="margin-bottom: 15px;">Found {{ results.local_results|length }} matching article(s) in your local database:</h3>
+                        {% for article in results.local_results %}
+                        <div class="article-item" style="margin-bottom: 15px; padding: 15px; border: 1px solid #ddd; border-radius: 4px; cursor: pointer;" onclick="loadArticle({{ article.id }})">
+                            <div style="font-size: 18px; font-weight: 600; color: #2c3e50; margin-bottom: 5px;">{{ article.title }}</div>
+                            <div style="font-size: 13px; color: #7f8c8d; margin-bottom: 8px;">{{ article.word_count }} words</div>
+                            <div style="font-size: 14px; color: #34495e;">{{ article.summary }}</div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                {% elif results.error %}
                     <div class="article-header">
                         <h2 class="article-title">{{ results.title }}</h2>
                         <p class="error-message">{{ results.error }}</p>
                     </div>
-                {% endif %}
-
-                {% if results.full_content %}
+                {% elif results.full_content %}
                     <div class="article-header">
                         <h2 class="article-title">{{ results.title }}</h2>
                         <div class="article-metadata">
@@ -431,6 +456,7 @@
                 <div class="empty-state">
                     <h2>Welcome to WikiFetch</h2>
                     <p>Search for a Wikipedia article to get started</p>
+                    <p style="font-size: 14px; color: #7f8c8d; margin-top: 10px;">Works fully offline with saved articles!</p>
                 </div>
             {% endif %}
         </div>
