@@ -49,6 +49,15 @@ def init_db():
         )
     ''')
 
+    # Create favorites table
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS favorites (
+            article_id INTEGER PRIMARY KEY,
+            favorited_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (article_id) REFERENCES articles(id) ON DELETE CASCADE
+        )
+    ''')
+
     # Create indexes for better query performance
     cursor.execute('CREATE INDEX IF NOT EXISTS idx_articles_title ON articles(title)')
     cursor.execute('CREATE INDEX IF NOT EXISTS idx_articles_saved_date ON articles(saved_date)')
@@ -379,3 +388,94 @@ def get_article_tags(article_id):
     conn.close()
 
     return tags
+
+# Favorites functions
+def add_favorite(article_id):
+    """Add article to favorites."""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute('INSERT OR IGNORE INTO favorites (article_id) VALUES (?)', (article_id,))
+        conn.commit()
+        return True
+    except Exception:
+        conn.rollback()
+        return False
+    finally:
+        conn.close()
+
+def remove_favorite(article_id):
+    """Remove article from favorites."""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('DELETE FROM favorites WHERE article_id = ?', (article_id,))
+    rows = cursor.rowcount
+    conn.commit()
+    conn.close()
+    return rows > 0
+
+def get_favorites():
+    """Get all favorited articles."""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('''
+        SELECT a.id, a.title, a.summary, a.word_count, a.saved_date, f.favorited_date
+        FROM articles a
+        JOIN favorites f ON a.id = f.article_id
+        ORDER BY f.favorited_date DESC
+    ''')
+    favorites = [dict(row) for row in cursor.fetchall()]
+    conn.close()
+    return favorites
+
+def is_favorite(article_id):
+    """Check if article is favorited."""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('SELECT 1 FROM favorites WHERE article_id = ?', (article_id,))
+    result = cursor.fetchone() is not None
+    conn.close()
+    return result
+
+# Bulk operations
+def delete_multiple_articles(article_ids):
+    """Delete multiple articles by IDs."""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    placeholders = ','.join('?' * len(article_ids))
+    cursor.execute(f'DELETE FROM articles WHERE id IN ({placeholders})', article_ids)
+    rows = cursor.rowcount
+    conn.commit()
+    conn.close()
+    return rows
+
+def get_all_tags():
+    """Get all tags with article counts."""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('''
+        SELECT t.id, t.name, COUNT(at.article_id) as article_count
+        FROM tags t
+        LEFT JOIN article_tags at ON t.id = at.tag_id
+        GROUP BY t.id, t.name
+        ORDER BY t.name
+    ''')
+    tags = [dict(row) for row in cursor.fetchall()]
+    conn.close()
+    return tags
+
+def get_articles_by_tag(tag_name):
+    """Get all articles with a specific tag."""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('''
+        SELECT a.id, a.title, a.summary, a.word_count, a.saved_date
+        FROM articles a
+        JOIN article_tags at ON a.id = at.article_id
+        JOIN tags t ON at.tag_id = t.id
+        WHERE t.name = ?
+        ORDER BY a.saved_date DESC
+    ''', (tag_name,))
+    articles = [dict(row) for row in cursor.fetchall()]
+    conn.close()
+    return articles
