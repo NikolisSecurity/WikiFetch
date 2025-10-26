@@ -21,6 +21,9 @@ wikipedia.set_user_agent("MyWikipediaApp/1.0")
 SAVE_DIR = "downloaded_data"
 os.makedirs(SAVE_DIR, exist_ok=True)
 
+# Initialize database
+database.init_db()
+
 @app.route('/', methods=['GET', 'POST'])
 def index():
     results = None
