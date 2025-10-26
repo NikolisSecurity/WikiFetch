@@ -49,6 +49,15 @@ def init_db():
         )
     ''')
 
+    # Create favorites table
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS favorites (
+            article_id INTEGER PRIMARY KEY,
+            favorited_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (article_id) REFERENCES articles(id) ON DELETE CASCADE
+        )
+    ''')
+
     # Create indexes for better query performance
     cursor.execute('CREATE INDEX IF NOT EXISTS idx_articles_title ON articles(title)')
     cursor.execute('CREATE INDEX IF NOT EXISTS idx_articles_saved_date ON articles(saved_date)')
