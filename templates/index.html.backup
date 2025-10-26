@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WikiFetch - Wikipedia Article Manager</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Header */
+        .header {
+            background-color: #2c3e50;
+            color: white;
+            padding: 15px 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .header h1 {
+            font-size: 24px;
+            font-weight: 600;
+        }
+
+        /* Main layout */
+        .main-container {
+            display: flex;
+            height: calc(100vh - 60px);
+            overflow: hidden;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 300px;
+            background-color: #f5f5f5;
+            border-right: 1px solid #ddd;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+        }
+
+        .sidebar-section {
+            padding: 20px;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .sidebar-section h2 {
+            font-size: 16px;
+            margin-bottom: 15px;
+            color: #333;
+            font-weight: 600;
+        }
+
+        /* Search section */
+        .search-box {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .search-box input {
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .search-box button {
+            padding: 10px;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .search-box button:hover {
+            background-color: #2980b9;
+        }
+
+        .search-box button:disabled {
+            background-color: #95a5a6;
+            cursor: not-allowed;
+        }
+
+        .error-message {
+            color: #e74c3c;
+            font-size: 13px;
+            margin-top: 5px;
+        }
+
+        /* Migration section */
+        .migration-list {
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background-color: white;
+        }
+
+        .migration-file {
+            padding: 8px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .migration-file:last-child {
+            border-bottom: none;
+        }
+
+        .migration-file input[type="checkbox"] {
+            cursor: pointer;
+        }
+
+        .migration-file label {
+            cursor: pointer;
+            font-size: 13px;
+            flex: 1;
+        }
+
+        .migration-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .migration-buttons button {
+            flex: 1;
+            padding: 8px;
+            border: none;
+            border-radius: 4px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .btn-import {
+            background-color: #27ae60;
+            color: white;
+        }
+
+        .btn-import:hover {
+            background-color: #229954;
+        }
+
+        .btn-import-all {
+            background-color: #16a085;
+            color: white;
+        }
+
+        .btn-import-all:hover {
+            background-color: #138d75;
+        }
+
+        .migration-option {
+            margin-top: 10px;
+            font-size: 13px;
+        }
+
+        /* Saved articles list */
+        .articles-list {
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .article-item {
+            padding: 12px;
+            border-bottom: 1px solid #eee;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .article-item:hover {
+            background-color: #e8e8e8;
+        }
+
+        .article-item.active {
+            background-color: #d5d5d5;
+            border-left: 3px solid #3498db;
+        }
+
+        .article-item-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 4px;
+        }
+
+        .article-item-meta {
+            font-size: 12px;
+            color: #7f8c8d;
+        }
+
+        .no-articles {
+            padding: 20px;
+            text-align: center;
+            color: #95a5a6;
+            font-size: 14px;
+        }
+
+        /* Content area */
+        .content {
+            flex: 1;
+            overflow-y: auto;
+            background-color: white;
+            padding: 30px;
+        }
+
+        .empty-state {
+            text-align: center;
+            color: #95a5a6;
+            padding: 100px 20px;
+        }
+
+        .empty-state h2 {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+
+        .empty-state p {
+            font-size: 16px;
+        }
+
+        /* Article display */
+        .article-header {
+            margin-bottom: 20px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #ecf0f1;
+        }
+
+        .article-title {
+            font-size: 32px;
+            color: #2c3e50;
+            margin-bottom: 15px;
+            font-weight: 600;
+        }
+
+        .article-metadata {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            font-size: 14px;
+            color: #7f8c8d;
+        }
+
+        .metadata-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .metadata-label {
+            font-weight: 600;
+        }
+
+        .article-summary {
+            background-color: #eef6fc;
+            padding: 15px;
+            border-left: 4px solid #3498db;
+            margin-bottom: 20px;
+            border-radius: 4px;
+        }
+
+        .article-summary h3 {
+            font-size: 16px;
+            margin-bottom: 10px;
+            color: #2c3e50;
+        }
+
+        .article-summary p {
+            font-size: 14px;
+            line-height: 1.6;
+            color: #34495e;
+        }
+
+        .article-content {
+            font-size: 15px;
+            line-height: 1.8;
+            color: #2c3e50;
+            white-space: pre-wrap;
+        }
+
+        .article-link {
+            margin-top: 20px;
+        }
+
+        .article-link a {
+            color: #3498db;
+            text-decoration: none;
+            font-size: 14px;
+        }
+
+        .article-link a:hover {
+            text-decoration: underline;
+        }
+
+        /* Loading spinner */
+        .loading {
+            text-align: center;
+            padding: 50px;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <div class="header">
+        <h1>WikiFetch</h1>
+    </div>
+
+    <!-- Main Container -->
+    <div class="main-container">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <!-- Search Section -->
+            <div class="sidebar-section">
+                <h2>Search Wikipedia</h2>
+                <form class="search-box" method="POST" action="/" id="searchForm">
+                    <input type="text" name="query" id="searchInput" placeholder="Enter article name..." required>
+                    <button type="submit" id="searchButton">Search</button>
+                    <div id="searchError" class="error-message hidden"></div>
+                </form>
+            </div>
+
+            <!-- Migration Section -->
+            <div class="sidebar-section" id="migrationSection">
+                <h2>Import from Files</h2>
+                <div id="migrationContent">
+                    <p style="font-size: 13px; color: #7f8c8d;">Loading...</p>
+                </div>
+            </div>
+
+            <!-- Saved Articles Section -->
+            <div class="sidebar-section" style="flex: 1; display: flex; flex-direction: column; padding-bottom: 0;">
+                <h2>Saved Articles (<span id="articleCount">0</span>)</h2>
+                <div class="articles-list" id="articlesList">
+                    {% if downloaded_files %}
+                        {% for article in downloaded_files %}
+                        <div class="article-item" data-id="{{ article.id }}" onclick="loadArticle({{ article.id }})">
+                            <div class="article-item-title">{{ article.title }}</div>
+                            <div class="article-item-meta">{{ article.word_count }} words</div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="no-articles">No articles saved yet</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Content Area -->
+        <div class="content" id="contentArea">
+            {% if results %}
+                {% if results.error %}
+                    <div class="article-header">
+                        <h2 class="article-title">{{ results.title }}</h2>
+                        <p class="error-message">{{ results.error }}</p>
+                    </div>
+                {% endif %}
+
+                {% if results.full_content %}
+                    <div class="article-header">
+                        <h2 class="article-title">{{ results.title }}</h2>
+                        <div class="article-metadata">
+                            <div class="metadata-item">
+                                <span class="metadata-label">Source:</span>
+                                <span>Wikipedia</span>
+                            </div>
+                            {% if results.word_count %}
+                            <div class="metadata-item">
+                                <span class="metadata-label">Words:</span>
+                                <span>{{ results.word_count }}</span>
+                            </div>
+                            {% endif %}
+                            {% if results.url %}
+                            <div class="metadata-item">
+                                <span class="metadata-label">URL:</span>
+                                <a href="{{ results.url }}" target="_blank">View on Wikipedia</a>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    {% if results.summary %}
+                    <div class="article-summary">
+                        <h3>Summary</h3>
+                        <p>{{ results.summary }}</p>
+                    </div>
+                    {% endif %}
+
+                    <div class="article-content">{{ results.full_content }}</div>
+                {% elif results.summary %}
+                    <div class="article-header">
+                        <h2 class="article-title">{{ results.title }}</h2>
+                    </div>
+                    <p>{{ results.summary }}</p>
+                {% endif %}
+            {% else %}
+                <div class="empty-state">
+                    <h2>Welcome to WikiFetch</h2>
+                    <p>Search for a Wikipedia article to get started</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <script>
+        // Load article by ID from database
+        async function loadArticle(articleId) {
+            const contentArea = document.getElementById('contentArea');
+            const articleItems = document.querySelectorAll('.article-item');
+
+            // Highlight active article
+            articleItems.forEach(item => item.classList.remove('active'));
+            event.currentTarget.classList.add('active');
+
+            // Show loading state
+            contentArea.innerHTML = `
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <p>Loading article...</p>
+                </div>
+            `;
+
+            try {
+                const response = await fetch(`/api/articles/${articleId}`);
+                const article = await response.json();
+
+                if (response.ok) {
+                    displayArticle(article);
+                } else {
+                    contentArea.innerHTML = `
+                        <div class="empty-state">
+                            <h2>Error</h2>
+                            <p>${article.error || 'Failed to load article'}</p>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                contentArea.innerHTML = `
+                    <div class="empty-state">
+                        <h2>Error</h2>
+                        <p>Failed to load article. Please try again.</p>
+                    </div>
+                `;
+            }
+        }
+
+        // Display article in content area
+        function displayArticle(article) {
+            const contentArea = document.getElementById('contentArea');
+            const date = new Date(article.saved_date).toLocaleDateString();
+
+            contentArea.innerHTML = `
+                <div class="article-header">
+                    <h2 class="article-title">${escapeHtml(article.title)}</h2>
+                    <div class="article-metadata">
+                        <div class="metadata-item">
+                            <span class="metadata-label">Source:</span>
+                            <span>Wikipedia</span>
+                        </div>
+                        <div class="metadata-item">
+                            <span class="metadata-label">Saved:</span>
+                            <span>${date}</span>
+                        </div>
+                        <div class="metadata-item">
+                            <span class="metadata-label">Words:</span>
+                            <span>${article.word_count}</span>
+                        </div>
+                        ${article.url ? `
+                        <div class="metadata-item">
+                            <span class="metadata-label">URL:</span>
+                            <a href="${escapeHtml(article.url)}" target="_blank">View on Wikipedia</a>
+                        </div>
+                        ` : ''}
+                    </div>
+                </div>
+                ${article.summary ? `
+                <div class="article-summary">
+                    <h3>Summary</h3>
+                    <p>${escapeHtml(article.summary)}</p>
+                </div>
+                ` : ''}
+                <div class="article-content">${escapeHtml(article.content)}</div>
+            `;
+        }
+
+        // Load migration status
+        async function loadMigrationStatus() {
+            try {
+                const response = await fetch('/migration-status');
+                const data = await response.json();
+
+                const migrationContent = document.getElementById('migrationContent');
+
+                if (data.unmigrated.length === 0) {
+                    migrationContent.innerHTML = '<p style="font-size: 13px; color: #7f8c8d;">No files to import</p>';
+                    return;
+                }
+
+                let html = '<div class="migration-list">';
+                data.unmigrated.forEach(file => {
+                    html += `
+                        <div class="migration-file">
+                            <input type="checkbox" id="file_${file}" value="${file}">
+                            <label for="file_${file}">${file}</label>
+                        </div>
+                    `;
+                });
+                html += '</div>';
+
+                html += `
+                    <div class="migration-option">
+                        <label>
+                            <input type="checkbox" id="deleteAfter">
+                            Delete files after import
+                        </label>
+                    </div>
+                    <div class="migration-buttons">
+                        <button class="btn-import" onclick="migrateSelected()">Import Selected</button>
+                        <button class="btn-import-all" onclick="migrateAll()">Import All</button>
+                    </div>
+                `;
+
+                migrationContent.innerHTML = html;
+            } catch (error) {
+                console.error('Failed to load migration status:', error);
+            }
+        }
+
+        // Migrate selected files
+        async function migrateSelected() {
+            const checkboxes = document.querySelectorAll('.migration-file input[type="checkbox"]:checked');
+            const files = Array.from(checkboxes).map(cb => cb.value);
+
+            if (files.length === 0) {
+                alert('Please select files to import');
+                return;
+            }
+
+            await migrateFiles(files);
+        }
+
+        // Migrate all files
+        async function migrateAll() {
+            const checkboxes = document.querySelectorAll('.migration-file input[type="checkbox"]');
+            const files = Array.from(checkboxes).map(cb => cb.value);
+            await migrateFiles(files);
+        }
+
+        // Perform migration
+        async function migrateFiles(files) {
+            const deleteAfter = document.getElementById('deleteAfter')?.checked || false;
+
+            try {
+                const response = await fetch('/migrate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        files: files,
+                        delete_after: deleteAfter
+                    })
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    alert(`Migration complete!\nSuccess: ${result.success_count}/${result.total_count}`);
+
+                    // Reload page to refresh article list
+                    window.location.reload();
+                } else {
+                    alert('Migration failed: ' + (result.error || 'Unknown error'));
+                }
+            } catch (error) {
+                alert('Migration failed: ' + error.message);
+            }
+        }
+
+        // Escape HTML to prevent XSS
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Update article count
+        function updateArticleCount() {
+            const count = document.querySelectorAll('.article-item').length;
+            document.getElementById('articleCount').textContent = count;
+        }
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            loadMigrationStatus();
+            updateArticleCount();
+        });
+    </script>
+</body>
+</html>
